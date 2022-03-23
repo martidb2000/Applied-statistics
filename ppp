@@ -1,0 +1,114 @@
+#import the library
+library( car )
+library( ellipse )
+library( faraway )
+library( leaps )
+library(MASS)
+library( GGally)
+library(rgl)
+library(carData)
+library(mvtnorm)
+
+
+#importo e guardo tutto il dataset
+View(Database_TRG_anonymized_06_03_22)
+summary(Database_TRG_anonymized_06_03_22) 
+dim(Database_TRG_anonymized_06_03_22)
+
+
+#separo le variabili clinische escludendo il codice del paziente e arrivando fino al TGR (compreso)
+varcliniche <- subset(Database_TRG_anonymized_06_03_22[,4:28])
+summary(varcliniche)
+
+
+##reg lin su tutto
+varclin=lm(TRG ~ VOI +Interval_CT_Surgery_days+Interval_greater_30_days  + Numero_metastasi + Diametro_in_mm +  Age  + CEA + bilater+ KRAS + NRAS +OXALIPLATINO+IRINOTECAN+ANTI_VEGF + ANTI_EGFR + Linee_di_chemioterapia+Cicli_di_chemioterapia+Cilci_last_line +greater_6_cicli , data = varcliniche) 
+summary(varclin)
+
+
+plot(varclin$fitted.values, varclin$residuals) 
+abline(h=0, col='red')
+
+qqnorm( varclin$residuals, ylab = "Residuals", pch = 16 )
+abline( 0, 1 )
+
+shapiro.test(varclin$residuals)
+##reg lin su significative
+varclin1=lm(TRG ~ VOI +Interval_CT_Surgery_days  +Interval_greater_30_days + Diametro_in_mm +  Age  + CEA + bilater+ KRAS  +OXALIPLATINO+IRINOTECAN+Cilci_last_line , data = varcliniche) 
+summary(varclin1)
+
+plot(varclin1$fitted.values, varclin1$residuals) 
+abline(h=0, col='red')
+
+qqnorm( varclin1$residuals, ylab = "Residuals", pch = 16 )
+abline( 0, 1 )
+
+shapiro.test(varclin1$residuals)
+##reg lin su ancora piu significative
+varclin2=lm(TRG ~ VOI  + Diametro_in_mm   + CEA + bilater+ KRAS  +OXALIPLATINO+Cilci_last_line , data = varcliniche) 
+summary(varclin2)
+
+plot(varclin2$fitted.values, varclin2$residuals) 
+abline(h=0, col='red')
+
+qqnorm( varclin2$residuals, ylab = "Residuals", pch = 16 )
+abline( 0, 1 )
+
+shapiro.test(varclin2$residuals)
+
+## il modello non va bene ... le variabili sono significative ma cade l'ipotesi di normalità. 
+##poi non stiamo considerando il fatto che prendiamo tutte le metastasi di ogni paziente 
+
+varcliniche_num <- subset(varcliniche[,-1])
+summary(varcliniche_num)
+
+varcliniche_num <- subset(varcliniche_num[,-4])
+
+varcliniche_num <- subset(varcliniche_num[,-4])
+varcliniche_num <- subset(varcliniche_num[,-4])
+
+varcliniche_num <- subset(varcliniche_num[,-5])
+
+varcliniche_num <- subset(varcliniche_num[,-10])
+
+varcliniche_num <- subset(varcliniche_num[,-18])
+summary(varcliniche_num)
+
+
+x11()
+boxplot(varcliniche_num)
+
+
+pc.varcliniche=princomp(na.omit(varcliniche_num), cor = TRUE,scores=TRUE)
+summary(pc.varcliniche)
+
+load.varcliniche = pc.varcliniche$loadings
+
+load.varcliniche[,1:6]
+x11()
+par(mfcol = c(3,2))
+for(i in 1:6) barplot(load.varcliniche[,i], ylim = c(-1, 1), main=paste("PC",i))
+load.varcliniche[,7:12]
+x11()
+par(mfcol = c(3,2))
+for(i in 7:12) barplot(load.varcliniche[,i], ylim = c(-1, 1), main=paste("PC",i))
+load.varcliniche[,13:18]
+x11()
+par(mfcol = c(3,2))
+for(i in 13:18) barplot(load.varcliniche[,i], ylim = c(-1, 1), main=paste("PC",i))
+
+
+
+x11()
+layout(matrix(c(2,3,1,3),2,byrow=T))
+plot(pc.varcliniche, las=2, main='Principal components', ylim=c(0,4.5e1))
+barplot(sapply(varcliniche_num,sd)^2, las=2, main='Original Variables', ylim=c(0,4.5e3), ylab='Variances')
+plot(cumsum(pc.varcliniche$sd^2)/sum(pc.varcliniche$sd^2), type='b', axes=F, xlab='number of components', 
+     ylab='contribution to the total variance', ylim=c(0,1))
+abline(h=1, col='blue')
+abline(h=0.8, lty=2, col='blue')
+box()
+axis(2,at=0:10/10,labels=0:10/10)
+axis(1,at=1:ncol(varcliniche_num),labels=1:ncol(varcliniche_num),las=2)
+
+#verrebbe da dire di interrompersi alla ottava componente principale ... è corretto ?
